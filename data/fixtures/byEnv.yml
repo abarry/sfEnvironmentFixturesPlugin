@@ -1,0 +1,147 @@
+<?php
+
+/*
+ * This file is part of the sfEnvironmentFixturesPlugin package.
+ * (c) 2010 Erin Millard <emwebdev@gmail.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+if (!function_exists('sfEnvironmentFixturesPlugin_findFixtures'))
+{
+  /**
+  * Finds fixture files recursively within a given path
+  *
+  * @param   string  $path  The path to search
+  *
+  * @return  array          An array of file paths
+  */
+  function sfEnvironmentFixturesPlugin_findFixtures($path)
+  {
+    $fixtures = array();
+
+    if (!is_dir($path)) return;
+
+    foreach (scandir($path) as $fixture)
+    {
+      $subPath = $path.'/'.$fixture;
+
+      if ('.' == substr($fixture, 0, 1)) continue;
+
+      if (is_dir($subPath))
+      {
+        $fixtures = array_merge($fixtures, sfEnvironmentFixturesPlugin_findFixtures($subPath));
+
+        continue;
+      }
+
+      if ('.yml' != strtolower(substr($fixture, -4))) continue;
+
+      $fixtures[] = $subPath;
+    }
+
+    return $fixtures;
+  }
+}
+
+if (!function_exists('sfEnvironmentFixturesPlugin_getEnvFixturesDir'))
+{
+  /**
+  * Returns the path of the environment fixtures directory
+  *
+  * @param   string  $env   The environment
+  *
+  * @return  string         The fixtures directory path
+  */
+  function sfEnvironmentFixturesPlugin_getEnvFixturesDir($env = null)
+  {
+    if (null === $env) $env = sfEnvironmentFixturesPlugin_getEnvironment();
+
+    return sfConfig::get('sf_data_dir').DIRECTORY_SEPARATOR.'fixtures_'.$env;
+  }
+}
+
+if (!function_exists('sfEnvironmentFixturesPlugin_taskMessage'))
+{
+  /**
+  * Outputs a message to the console
+  *
+  * @param  string  $text  The message text
+  */
+  function sfEnvironmentFixturesPlugin_taskMessage($text)
+  {
+    $maxLineSize = ctype_digit(trim(shell_exec('tput cols 2>&1'))) ? (integer) shell_exec('tput cols') : 78;
+
+    sfApplicationConfiguration::getActive()->getEventDispatcher()->notify(
+      new sfEvent(null, 'command.log', array('>> fixtures  '.sfEnvironmentFixturesPlugin_messageExcerpt($text, $maxLineSize - 12)))
+    );
+  }
+}
+
+if (!function_exists('sfEnvironmentFixturesPlugin_messageExcerpt'))
+{
+  /**
+  * Creates an excerpt of text for a console message
+  *
+  * @param  string   $text  The message text
+  * @param  integer  $size  Maximum size for the message display
+  *
+  * @return  string         The message excerpt
+  */
+  function sfEnvironmentFixturesPlugin_messageExcerpt($text, $size = 66)
+  {
+    if (strlen($text) < $size) return $text;
+
+    $subsize = floor(($size - 3) / 2);
+
+    return substr($text, 0, $subsize).'...'.substr($text, -$subsize);
+  }
+}
+
+if (!function_exists('sfEnvironmentFixturesPlugin_getEnvironment'))
+{
+  /**
+  * Returns the current environment
+  *
+  * @return  string  The current environment
+  */
+  function sfEnvironmentFixturesPlugin_getEnvironment()
+  {
+    $conf = sfApplicationConfiguration::getActive();
+
+    if($conf instanceof sfApplicationConfiguration) return $conf->getEnvironment();
+
+    if (isset($_SERVER['argv']))
+    {
+      foreach ($_SERVER['argv'] as $arg)
+      {
+        $matches = null;
+
+        if (preg_match('/--env(?:[\s=\'"]+)?([^\'"]+)[\'"]?/', $arg, $matches) && isset($matches[1]))
+        {
+          return $matches[1] ? $matches[1] : 'dev';
+        }
+      }
+    }
+
+    return 'dev';
+  }
+}
+
+$_envFixturesDir = sfEnvironmentFixturesPlugin_getEnvFixturesDir();
+
+if (is_dir($_envFixturesDir))
+{
+  $_currentEnv = sfEnvironmentFixturesPlugin_getEnvironment();
+
+  sfEnvironmentFixturesPlugin_taskMessage('Including data fixtures for environment "'.$_currentEnv.'"');
+  sfEnvironmentFixturesPlugin_taskMessage('Including data fixtures from "'.$_envFixturesDir.'"');
+
+  foreach (sfEnvironmentFixturesPlugin_findFixtures($_envFixturesDir) as $_envFixture)
+  {
+    echo "\n";
+    include($_envFixture);
+    echo "\n";
+  }
+}
