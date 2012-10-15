@@ -11,13 +11,9 @@ This plugin works with either Doctrine or Propel.
 Installation
 ------------
 
-* Install the plugin (via a package):
+* Install the plugin as submodule:
 
-        $ symfony plugin:install sfEnvironmentFixturesPlugin
-
-* Install the plugin (via a Subversion checkout):
-
-        $ svn co http://svn.symfony-project.com/plugins/sfEnvironmentFixturesPlugin/branches/1.0 plugins/sfEnvironmentFixturesPlugin
+        $ git submodule add git@github.com:abarry/sfEnvironmentFixturesPlugin.git plugins/sfEnvironmentFixturesPlugin
 
 * Enable the plugin in `config/ProjectConfiguration.class.php`:
 
